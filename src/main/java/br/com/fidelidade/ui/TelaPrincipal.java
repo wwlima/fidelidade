@@ -1,13 +1,11 @@
 package br.com.fidelidade.ui;
 
-import javax.swing.JSeparator;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GraphicsEnvironment;
 import java.awt.GridLayout;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -18,9 +16,9 @@ import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
@@ -201,8 +199,7 @@ public class TelaPrincipal {
 		painelFiltro.add(new JLabel("E-mail:"));
 		painelFiltro.add(campoBuscaEmail);
 		
-		var campoBuscaData = new JTextField(15);
-		campoBuscaData.setText("dd/MM/yyyy");
+		var campoBuscaData = new DateInput();
 		painelFiltro.add(new JLabel("Data de Nascimento:"));
 		painelFiltro.add(campoBuscaData);
 		
@@ -217,7 +214,8 @@ public class TelaPrincipal {
 		btnPesquisar.addActionListener(_ -> {
 			var temNome = campoBuscaNome.getText() != null && !campoBuscaNome.getText().trim().isEmpty();
 			var temEmail = campoBuscaEmail.getText() != null && !campoBuscaEmail.getText().trim().isEmpty();
-			var temData = campoBuscaData.getText() != null && !campoBuscaData.getText().trim().isEmpty() && !campoBuscaData.getText().equals("dd/MM/yyyy");
+			var dataFiltro = campoBuscaData.getDate();
+			var temData = dataFiltro != null;
 			
 			estadoPaginacao.paginaAtual = 0;
 			
@@ -234,15 +232,11 @@ public class TelaPrincipal {
 				estadoPaginacao.tipoFiltro = 2;
 				carregarPagina.accept(null);
 			} else if (temData) {
-				try {
-					estadoPaginacao.filtroData = java.time.LocalDate.parse(campoBuscaData.getText(), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-					estadoPaginacao.filtroNome = "";
-					estadoPaginacao.filtroEmail = "";
-					estadoPaginacao.tipoFiltro = 3;
-					carregarPagina.accept(null);
-				} catch (DateTimeParseException ex) {
-					JOptionPane.showMessageDialog(frameConsulta, "Data inválida! Use o formato dd/MM/yyyy");
-				}
+				estadoPaginacao.filtroData = dataFiltro;
+				estadoPaginacao.filtroNome = "";
+				estadoPaginacao.filtroEmail = "";
+				estadoPaginacao.tipoFiltro = 3;
+				carregarPagina.accept(null);
 			} else {
 				estadoPaginacao.filtroNome = "";
 				estadoPaginacao.filtroEmail = "";
@@ -256,7 +250,7 @@ public class TelaPrincipal {
 		btnLimpar.addActionListener(_ -> {
 			campoBuscaNome.setText("");
 			campoBuscaEmail.setText("");
-			campoBuscaData.setText("dd/MM/yyyy");
+			campoBuscaData.limpar();
 			estadoPaginacao.filtroNome = "";
 			estadoPaginacao.filtroEmail = "";
 			estadoPaginacao.filtroData = null;
@@ -348,7 +342,7 @@ public class TelaPrincipal {
 		var nome = new JTextField();
 		var email = new JTextField();
 		var telefone = new JTextField();
-		var dataNascimento = new JTextField("dd/MM/yyyy");
+		var dataNascimento = new DateInput();
 		var status = new JLabel(" ");
 
 		var form = new JPanel(new GridLayout(0, 2, 8, 8));
@@ -365,20 +359,16 @@ public class TelaPrincipal {
 		var btnCadastrar = new JButton("Cadastrar");
 		btnCadastrar.addActionListener(_ -> {
 			try {
-				LocalDate data = null;
-				if (dataNascimento.getText() != null && !dataNascimento.getText().isEmpty() && !dataNascimento.getText().equals("dd/MM/yyyy")) {
-					try {
-						data = LocalDate.parse(dataNascimento.getText(), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-					} catch (DateTimeParseException ex) {
-						throw new IllegalArgumentException("Data de nascimento inválida. Use o formato dd/MM/yyyy");
-					}
+				LocalDate data = dataNascimento.getDate();
+				if (dataNascimento.getText() != null && !dataNascimento.getText().trim().isEmpty() && data == null) {
+					throw new IllegalArgumentException("Data de nascimento inválida. Use o formato dd/MM/yyyy");
 				}
 				//var cliente = clienteService.cadastrar(nome.getText(), email.getText(), telefone.getText(), data);
 				status.setText("✓ Cliente cadastrado com sucesso!");
 				nome.setText("");
 				email.setText("");
 				telefone.setText("");
-				dataNascimento.setText("dd/MM/yyyy");
+				dataNascimento.limpar();
 				// Atualizar lista após cadastro (volta para página 1)
 				var pag = (Object) estadoPaginacao;
 				java.lang.reflect.Field field = pag.getClass().getDeclaredField("paginaAtual");
