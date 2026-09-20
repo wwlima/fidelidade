@@ -39,7 +39,7 @@ public class TelaPrincipal {
 
 	private void abrirTelaConsulta() {
 		var frameConsulta = new JFrame("Fidelidade — Clientes");
-		frameConsulta.setSize(900, 550);
+		frameConsulta.setSize(950, 600);
 		frameConsulta.setLocationRelativeTo(null);
 		frameConsulta.setLayout(new BorderLayout(8, 8));
 		frameConsulta.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -57,7 +57,7 @@ public class TelaPrincipal {
 			String filtroNome = "";
 			String filtroEmail = "";
 			java.time.LocalDate filtroData = null;
-			int tipoFiltro = 0; // 0 = nenhum, 1 = nome, 2 = email, 3 = data
+			int tipoFiltro = 0;
 		};
 
 		// Tabela de resultados
@@ -100,98 +100,101 @@ public class TelaPrincipal {
 			}
 		};
 
-		// Painel superior com botão de cadastro
-		var painelTop = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
-		painelTop.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+		// Painel superior com botões
+		var painelSuperior = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+		painelSuperior.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
 		var btnCadastrar = new JButton("+ Cadastrar novo cliente");
 		btnCadastrar.addActionListener(e -> abrirDialogCadastro(frameConsulta, carregarPagina, estadoPaginacao));
-		painelTop.add(btnCadastrar);
-
-		// Painel de filtro
-		var painelFiltro = new JPanel(new GridLayout(2, 3, 8, 8));
-		painelFiltro.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+		painelSuperior.add(btnCadastrar);
 		
-		var campoBuscaNome = new JTextField();
-		painelFiltro.add(new JLabel("Buscar por nome:"));
-		painelFiltro.add(campoBuscaNome);
-		
-		var campoBuscaEmail = new JTextField();
-		painelFiltro.add(new JLabel("Buscar por e-mail:"));
-		painelFiltro.add(campoBuscaEmail);
-		
-		painelFiltro.add(new JLabel(""));
-		painelFiltro.add(new JLabel(""));
-
-		// Painel de tamanho de página
-		var painelTamanho = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
-		painelTamanho.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
-		painelTamanho.add(new JLabel("Registros por página:"));
-		
+		painelSuperior.add(new JLabel("     Registros por página:"));
 		var tamanhoComboBox = new JComboBox<>(new Integer[] { 2, 10, 50 });
-		tamanhoComboBox.setSelectedItem(10);
+		tamanhoComboBox.setSelectedItem(2);
 		tamanhoComboBox.addActionListener(e -> {
 			estadoPaginacao.tamanho = (Integer) tamanhoComboBox.getSelectedItem();
 			estadoPaginacao.paginaAtual = 0;
 			carregarPagina.accept(null);
 		});
-		painelTamanho.add(tamanhoComboBox);
+		painelSuperior.add(tamanhoComboBox);
 
-		// Painel de botões de busca
-		var painelBuscaBotoes = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+		// Painel de filtro/pesquisa
+		var painelFiltro = new JPanel(new GridLayout(2, 4, 8, 8));
+		painelFiltro.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
 		
-		var buscaNome = new JButton("Buscar por Nome");
-		buscaNome.addActionListener(e -> {
-			estadoPaginacao.filtroNome = campoBuscaNome.getText();
-			estadoPaginacao.filtroEmail = "";
-			estadoPaginacao.filtroData = null;
-			estadoPaginacao.tipoFiltro = campoBuscaNome.getText().isEmpty() ? 0 : 1;
-			estadoPaginacao.paginaAtual = 0;
-			carregarPagina.accept(null);
-		});
+		var campoBuscaNome = new JTextField(15);
+		painelFiltro.add(new JLabel("Nome:"));
+		painelFiltro.add(campoBuscaNome);
+		
+		var campoBuscaEmail = new JTextField(15);
+		painelFiltro.add(new JLabel("E-mail:"));
+		painelFiltro.add(campoBuscaEmail);
+		
+		var campoBuscaData = new JTextField(15);
+		campoBuscaData.setText("dd/MM/yyyy");
+		painelFiltro.add(new JLabel("Data de Nascimento:"));
+		painelFiltro.add(campoBuscaData);
+		
+		painelFiltro.add(new JLabel(""));
+		painelFiltro.add(new JLabel(""));
 
-		var buscaEmail = new JButton("Buscar por E-mail");
-		buscaEmail.addActionListener(e -> {
-			estadoPaginacao.filtroNome = "";
-			estadoPaginacao.filtroEmail = campoBuscaEmail.getText();
-			estadoPaginacao.filtroData = null;
-			estadoPaginacao.tipoFiltro = campoBuscaEmail.getText().isEmpty() ? 0 : 2;
+		// Painel de botões de ação
+		var painelBotoes = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+		painelBotoes.setBorder(BorderFactory.createEmptyBorder(0, 16, 12, 16));
+		
+		var btnPesquisar = new JButton("Pesquisar");
+		btnPesquisar.addActionListener(e -> {
+			var temNome = campoBuscaNome.getText() != null && !campoBuscaNome.getText().trim().isEmpty();
+			var temEmail = campoBuscaEmail.getText() != null && !campoBuscaEmail.getText().trim().isEmpty();
+			var temData = campoBuscaData.getText() != null && !campoBuscaData.getText().trim().isEmpty() && !campoBuscaData.getText().equals("dd/MM/yyyy");
+			
 			estadoPaginacao.paginaAtual = 0;
-			carregarPagina.accept(null);
-		});
-
-		var buscaData = new JButton("Buscar por Data");
-		buscaData.addActionListener(e -> {
-			var dataStr = JOptionPane.showInputDialog(frameConsulta, "Data (dd/MM/yyyy):");
-			if (dataStr != null && !dataStr.isEmpty()) {
+			
+			if (temNome) {
+				estadoPaginacao.filtroNome = campoBuscaNome.getText().trim();
+				estadoPaginacao.filtroEmail = "";
+				estadoPaginacao.filtroData = null;
+				estadoPaginacao.tipoFiltro = 1;
+				carregarPagina.accept(null);
+			} else if (temEmail) {
+				estadoPaginacao.filtroNome = "";
+				estadoPaginacao.filtroEmail = campoBuscaEmail.getText().trim();
+				estadoPaginacao.filtroData = null;
+				estadoPaginacao.tipoFiltro = 2;
+				carregarPagina.accept(null);
+			} else if (temData) {
 				try {
-					estadoPaginacao.filtroData = java.time.LocalDate.parse(dataStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+					estadoPaginacao.filtroData = java.time.LocalDate.parse(campoBuscaData.getText(), DateTimeFormatter.ofPattern("dd/MM/yyyy"));
 					estadoPaginacao.filtroNome = "";
 					estadoPaginacao.filtroEmail = "";
 					estadoPaginacao.tipoFiltro = 3;
-					estadoPaginacao.paginaAtual = 0;
 					carregarPagina.accept(null);
 				} catch (DateTimeParseException ex) {
 					JOptionPane.showMessageDialog(frameConsulta, "Data inválida! Use o formato dd/MM/yyyy");
 				}
+			} else {
+				estadoPaginacao.filtroNome = "";
+				estadoPaginacao.filtroEmail = "";
+				estadoPaginacao.filtroData = null;
+				estadoPaginacao.tipoFiltro = 0;
+				carregarPagina.accept(null);
 			}
 		});
-
-		var limpar = new JButton("Limpar Filtros");
-		limpar.addActionListener(e -> {
+		
+		var btnLimpar = new JButton("Limpar");
+		btnLimpar.addActionListener(e -> {
+			campoBuscaNome.setText("");
+			campoBuscaEmail.setText("");
+			campoBuscaData.setText("dd/MM/yyyy");
 			estadoPaginacao.filtroNome = "";
 			estadoPaginacao.filtroEmail = "";
 			estadoPaginacao.filtroData = null;
 			estadoPaginacao.tipoFiltro = 0;
 			estadoPaginacao.paginaAtual = 0;
-			campoBuscaNome.setText("");
-			campoBuscaEmail.setText("");
 			carregarPagina.accept(null);
 		});
-
-		painelBuscaBotoes.add(buscaNome);
-		painelBuscaBotoes.add(buscaEmail);
-		painelBuscaBotoes.add(buscaData);
-		painelBuscaBotoes.add(limpar);
+		
+		painelBotoes.add(btnPesquisar);
+		painelBotoes.add(btnLimpar);
 
 		// Painel de controles de paginação
 		var painelPaginacao = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 8));
@@ -227,7 +230,7 @@ public class TelaPrincipal {
 			} else if (estadoPaginacao.tipoFiltro == 3 && estadoPaginacao.filtroData != null) {
 				pagina = service.buscarPorDataNascimentoPaginado(estadoPaginacao.filtroData, 0, estadoPaginacao.tamanho);
 			}
-			estadoPaginacao.paginaAtual = pagina.getTotalPages() - 1;
+			estadoPaginacao.paginaAtual = Math.max(0, pagina.getTotalPages() - 1);
 			carregarPagina.accept(null);
 		});
 		
@@ -237,10 +240,9 @@ public class TelaPrincipal {
 		painelPaginacao.add(btnProxima);
 		painelPaginacao.add(btnUltima);
 
-		frameConsulta.add(painelTop, BorderLayout.PAGE_START);
+		frameConsulta.add(painelSuperior, BorderLayout.PAGE_START);
 		frameConsulta.add(painelFiltro, BorderLayout.NORTH);
-		frameConsulta.add(painelTamanho, BorderLayout.BEFORE_FIRST_LINE);
-		frameConsulta.add(painelBuscaBotoes, BorderLayout.BEFORE_LINE_BEGINS);
+		frameConsulta.add(painelBotoes, BorderLayout.BEFORE_FIRST_LINE);
 		frameConsulta.add(scrollTabela, BorderLayout.CENTER);
 		frameConsulta.add(painelPaginacao, BorderLayout.SOUTH);
 		
