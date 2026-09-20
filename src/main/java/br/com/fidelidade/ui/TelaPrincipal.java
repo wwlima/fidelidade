@@ -13,6 +13,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import br.com.fidelidade.service.CampanhaService;
 import br.com.fidelidade.service.ClienteService;
 import br.com.fidelidade.service.ProdutoService;
 
@@ -22,13 +23,15 @@ public class TelaPrincipal {
     private final ProdutoService produtoService;
     private final TelaClientes telaClientes;
     private final TelaProdutos telaProdutos;
+    private final TelaCampanhas telaCampanhas;
     private JFrame frameConsulta;
 
-    public TelaPrincipal(ClienteService clienteService, ProdutoService produtoService) {
+    public TelaPrincipal(ClienteService clienteService, ProdutoService produtoService, CampanhaService campanhaService) {
         this.clienteService = clienteService;
         this.produtoService = produtoService;
         this.telaClientes = new TelaClientes(clienteService);
         this.telaProdutos = new TelaProdutos(produtoService);
+        this.telaCampanhas = new TelaCampanhas(campanhaService);
     }
 
     /**
@@ -72,8 +75,12 @@ public class TelaPrincipal {
         var itemProdutos = new JMenuItem("Produtos");
         itemProdutos.addActionListener(_ -> telaProdutos.abrirTelaConsulta(frameConsulta));
 
+        var itemCampanhas = new JMenuItem("Campanhas");
+        itemCampanhas.addActionListener(_ -> telaCampanhas.abrirTelaConsulta(frameConsulta));
+
         menuGestao.add(itemClientes);
         menuGestao.add(itemProdutos);
+        menuGestao.add(itemCampanhas);
         menuBar.add(menuGestao);
 
         frameConsulta.setJMenuBar(menuBar);
