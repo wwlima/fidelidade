@@ -15,6 +15,9 @@ import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -28,13 +31,19 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import br.com.fidelidade.service.ClienteService;
+import br.com.fidelidade.service.ProdutoService;
 
 @Component
 public class TelaPrincipal {
-	private final ClienteService service;
+	private final ClienteService clienteService;
+	private final ProdutoService produtoService;
+	private JFrame frameConsulta;
+	private TelaProdutos telaProdutos;
 
-	public TelaPrincipal(ClienteService service) {
-		this.service = service;
+	public TelaPrincipal(ClienteService clienteService, ProdutoService produtoService) {
+		this.clienteService = clienteService;
+		this.produtoService = produtoService;
+		this.telaProdutos = new TelaProdutos(produtoService);
 	}
 
 	/**
@@ -51,12 +60,12 @@ public class TelaPrincipal {
 						"Execute em uma sessão do Windows com área de trabalho, sem -Djava.awt.headless=true.");
 				return;
 			}
-			abrirTelaConsulta();
+			criarJanelaConsulta();
 		});
 	}
 
-	private void abrirTelaConsulta() {
-		var frameConsulta = new JFrame("Fidelidade — Clientes");
+	private void criarJanelaConsulta() {
+		frameConsulta = new JFrame("Fidelidade");
 		frameConsulta.setSize(950, 600);
 		frameConsulta.setLocationRelativeTo(null);
 		frameConsulta.setLayout(new BorderLayout(8, 8));
@@ -67,6 +76,40 @@ public class TelaPrincipal {
 				br.com.fidelidade.FidelidadeApplication.encerrar();
 			}
 		});
+
+		// Criar menu
+		var menuBar = new JMenuBar();
+		var menuGestao = new JMenu("Gestão");
+		
+		var itemClientes = new JMenuItem("Clientes");
+		itemClientes.addActionListener(_ -> abrirTelaClientes());
+		
+		var itemProdutos = new JMenuItem("Produtos");
+		itemProdutos.addActionListener(_ -> abrirTelaProdutos());
+		
+		menuGestao.add(itemClientes);
+		menuGestao.add(itemProdutos);
+		menuBar.add(menuGestao);
+		
+		frameConsulta.setJMenuBar(menuBar);
+		frameConsulta.setVisible(true);
+		
+		// Abre a tela de clientes por padrão
+		abrirTelaClientes();
+	}
+
+	private void abrirTelaProdutos() {
+		telaProdutos.abrirTelaConsulta(frameConsulta);
+	}
+
+	private void abrirTelaClientes() {
+		abrirTelaConsulta();
+	}
+
+	private void abrirTelaConsulta() {
+		frameConsulta.setTitle("Fidelidade — Clientes");
+		frameConsulta.getContentPane().removeAll();
+		frameConsulta.setLayout(new BorderLayout(8, 8));
 
 		// Estado da paginação
 		var estadoPaginacao = new Object() {
@@ -93,14 +136,14 @@ public class TelaPrincipal {
 		var carregarPagina = new java.util.function.Consumer<Object>() {
 			@Override public void accept(Object ignored) {
 				modeloTabela.setRowCount(0);
-				var pagina = service.listarPaginado(estadoPaginacao.paginaAtual, estadoPaginacao.tamanho);
+				var pagina = clienteService.listarPaginado(estadoPaginacao.paginaAtual, estadoPaginacao.tamanho);
 				
 				if (estadoPaginacao.tipoFiltro == 1 && !estadoPaginacao.filtroNome.isEmpty()) {
-					pagina = service.buscarPorNomePaginado(estadoPaginacao.filtroNome, estadoPaginacao.paginaAtual, estadoPaginacao.tamanho);
+					pagina = clienteService.buscarPorNomePaginado(estadoPaginacao.filtroNome, estadoPaginacao.paginaAtual, estadoPaginacao.tamanho);
 				} else if (estadoPaginacao.tipoFiltro == 2 && !estadoPaginacao.filtroEmail.isEmpty()) {
-					pagina = service.buscarPorEmailPaginado(estadoPaginacao.filtroEmail, estadoPaginacao.paginaAtual, estadoPaginacao.tamanho);
+					pagina = clienteService.buscarPorEmailPaginado(estadoPaginacao.filtroEmail, estadoPaginacao.paginaAtual, estadoPaginacao.tamanho);
 				} else if (estadoPaginacao.tipoFiltro == 3 && estadoPaginacao.filtroData != null) {
-					pagina = service.buscarPorDataNascimentoPaginado(estadoPaginacao.filtroData, estadoPaginacao.paginaAtual, estadoPaginacao.tamanho);
+					pagina = clienteService.buscarPorDataNascimentoPaginado(estadoPaginacao.filtroData, estadoPaginacao.paginaAtual, estadoPaginacao.tamanho);
 				}
 				
 				for (var cliente : pagina.getContent()) {
@@ -122,7 +165,7 @@ public class TelaPrincipal {
 		var painelEsquerdo = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
 		painelEsquerdo.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
 		var btnCadastrar = new JButton("+ Cadastrar novo cliente");
-		btnCadastrar.addActionListener(_ -> abrirDialogCadastro(frameConsulta, carregarPagina, estadoPaginacao));
+		btnCadastrar.addActionListener(_ -> abrirDialogCadastro(carregarPagina, estadoPaginacao));
 		painelEsquerdo.add(btnCadastrar);
 		
 		painelEsquerdo.add(new JLabel("     Registros por página:"));
@@ -256,13 +299,13 @@ public class TelaPrincipal {
 		
 		var btnUltima = new JButton("Última »");
 		btnUltima.addActionListener(_ -> {
-			var pagina = service.listarPaginado(0, estadoPaginacao.tamanho);
+			var pagina = clienteService.listarPaginado(0, estadoPaginacao.tamanho);
 			if (estadoPaginacao.tipoFiltro == 1 && !estadoPaginacao.filtroNome.isEmpty()) {
-				pagina = service.buscarPorNomePaginado(estadoPaginacao.filtroNome, 0, estadoPaginacao.tamanho);
+				pagina = clienteService.buscarPorNomePaginado(estadoPaginacao.filtroNome, 0, estadoPaginacao.tamanho);
 			} else if (estadoPaginacao.tipoFiltro == 2 && !estadoPaginacao.filtroEmail.isEmpty()) {
-				pagina = service.buscarPorEmailPaginado(estadoPaginacao.filtroEmail, 0, estadoPaginacao.tamanho);
+				pagina = clienteService.buscarPorEmailPaginado(estadoPaginacao.filtroEmail, 0, estadoPaginacao.tamanho);
 			} else if (estadoPaginacao.tipoFiltro == 3 && estadoPaginacao.filtroData != null) {
-				pagina = service.buscarPorDataNascimentoPaginado(estadoPaginacao.filtroData, 0, estadoPaginacao.tamanho);
+				pagina = clienteService.buscarPorDataNascimentoPaginado(estadoPaginacao.filtroData, 0, estadoPaginacao.tamanho);
 			}
 			estadoPaginacao.paginaAtual = Math.max(0, pagina.getTotalPages() - 1);
 			carregarPagina.accept(null);
@@ -292,13 +335,14 @@ public class TelaPrincipal {
 		// Carregar os primeiros 10 registros ao abrir
 		carregarPagina.accept(null);
 		
-		frameConsulta.setVisible(true);
+		frameConsulta.revalidate();
+		frameConsulta.repaint();
 	}
 
-	private void abrirDialogCadastro(JFrame parent, java.util.function.Consumer<Object> aposXadastro, Object estadoPaginacao) {
-		var dialog = new JDialog(parent, "Cadastrar novo cliente", true);
+	private void abrirDialogCadastro(java.util.function.Consumer<Object> aposXadastro, Object estadoPaginacao) {
+		var dialog = new JDialog(frameConsulta, "Cadastrar novo cliente", true);
 		dialog.setSize(400, 300);
-		dialog.setLocationRelativeTo(parent);
+		dialog.setLocationRelativeTo(frameConsulta);
 		dialog.setLayout(new BorderLayout(8, 8));
 
 		var nome = new JTextField();
@@ -329,7 +373,7 @@ public class TelaPrincipal {
 						throw new IllegalArgumentException("Data de nascimento inválida. Use o formato dd/MM/yyyy");
 					}
 				}
-				//var cliente = service.cadastrar(nome.getText(), email.getText(), telefone.getText(), data);
+				//var cliente = clienteService.cadastrar(nome.getText(), email.getText(), telefone.getText(), data);
 				status.setText("✓ Cliente cadastrado com sucesso!");
 				nome.setText("");
 				email.setText("");
