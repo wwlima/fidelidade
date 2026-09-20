@@ -1,5 +1,6 @@
 package br.com.fidelidade.ui;
 
+import javax.swing.JSeparator;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GraphicsEnvironment;
@@ -144,7 +145,10 @@ public class TelaPrincipal {
 
 		// Painel de filtro/pesquisa
 		var painelFiltro = new JPanel(new GridLayout(2, 4, 8, 8));
-		painelFiltro.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+		painelFiltro.setBorder(BorderFactory.createCompoundBorder(
+				BorderFactory.createTitledBorder("Filtro"),
+				BorderFactory.createEmptyBorder(8, 8, 8, 8)
+		));
 		
 		var campoBuscaNome = new JTextField(15);
 		painelFiltro.add(new JLabel("Nome:"));
@@ -275,10 +279,11 @@ public class TelaPrincipal {
 		painelInferior.add(painelEsquerdo, BorderLayout.WEST);
 		painelInferior.add(painelPaginacao, BorderLayout.EAST);
 
-		// Painel principal superior combinado: título + busca
+		// Painel principal superior combinado: título + separador + busca
 		var painelPrincipalSuperior = new JPanel(new BorderLayout(8, 8));
 		painelPrincipalSuperior.add(painelTitulo, BorderLayout.NORTH);
-		painelPrincipalSuperior.add(painelBuscaSuperior, BorderLayout.CENTER);
+		painelPrincipalSuperior.add(new JSeparator(), BorderLayout.CENTER);
+		painelPrincipalSuperior.add(painelBuscaSuperior, BorderLayout.SOUTH);
 
 		frameConsulta.add(painelPrincipalSuperior, BorderLayout.NORTH);
 		frameConsulta.add(scrollTabela, BorderLayout.CENTER);
