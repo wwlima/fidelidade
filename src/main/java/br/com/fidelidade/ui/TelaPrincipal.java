@@ -134,6 +134,14 @@ public class TelaPrincipal {
 		});
 		painelEsquerdo.add(tamanhoComboBox);
 
+		// Painel de título
+		var painelTitulo = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+		painelTitulo.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+		painelTitulo.setBackground(new java.awt.Color(240, 240, 240));
+		var lblTitulo = new JLabel("Gestão de Clientes");
+		lblTitulo.setFont(new java.awt.Font("Arial", java.awt.Font.BOLD, 16));
+		painelTitulo.add(lblTitulo);
+
 		// Painel de filtro/pesquisa
 		var painelFiltro = new JPanel(new GridLayout(2, 4, 8, 8));
 		painelFiltro.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
@@ -213,6 +221,11 @@ public class TelaPrincipal {
 		painelBotoes.add(btnPesquisar);
 		painelBotoes.add(btnLimpar);
 
+		// Painel superior que contém filtro e botões
+		var painelBuscaSuperior = new JPanel(new BorderLayout(8, 8));
+		painelBuscaSuperior.add(painelFiltro, BorderLayout.NORTH);
+		painelBuscaSuperior.add(painelBotoes, BorderLayout.CENTER);
+
 		// Painel de controles de paginação
 		var painelPaginacao = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 8));
 		painelPaginacao.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
@@ -262,8 +275,12 @@ public class TelaPrincipal {
 		painelInferior.add(painelEsquerdo, BorderLayout.WEST);
 		painelInferior.add(painelPaginacao, BorderLayout.EAST);
 
-		frameConsulta.add(painelFiltro, BorderLayout.NORTH);
-		frameConsulta.add(painelBotoes, BorderLayout.BEFORE_FIRST_LINE);
+		// Painel principal superior combinado: título + busca
+		var painelPrincipalSuperior = new JPanel(new BorderLayout(8, 8));
+		painelPrincipalSuperior.add(painelTitulo, BorderLayout.NORTH);
+		painelPrincipalSuperior.add(painelBuscaSuperior, BorderLayout.CENTER);
+
+		frameConsulta.add(painelPrincipalSuperior, BorderLayout.NORTH);
 		frameConsulta.add(scrollTabela, BorderLayout.CENTER);
 		frameConsulta.add(painelInferior, BorderLayout.SOUTH);
 		
