@@ -30,4 +30,9 @@ public class Cliente {
     public LocalDate getDataNascimento() { return dataNascimento; }
     public Integer getPontos() { return pontos; }
     public LocalDateTime getCadastradoEm() { return cadastradoEm; }
+
+    public void setNome(String nome) { this.nome = nome; }
+    public void setEmail(String email) { this.email = email; }
+    public void setTelefone(String telefone) { this.telefone = telefone; }
+    public void setDataNascimento(LocalDate dataNascimento) { this.dataNascimento = dataNascimento; }
 }

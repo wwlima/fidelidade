@@ -4,6 +4,8 @@ import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GraphicsEnvironment;
 import java.awt.GridLayout;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -16,6 +18,7 @@ import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
@@ -28,6 +31,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import br.com.fidelidade.domain.Cliente;
 import br.com.fidelidade.service.ClienteService;
 import br.com.fidelidade.service.ProdutoService;
 
@@ -125,6 +129,35 @@ public class TelaPrincipal {
 			@Override public boolean isCellEditable(int row, int column) { return false; }
 		};
 		var tabela = new JTable(modeloTabela);
+		var menuContexto = new javax.swing.JPopupMenu();
+		var itemEditar = new javax.swing.JMenuItem("Editar cliente");
+		var itemExcluir = new javax.swing.JMenuItem("Excluir cliente");
+		menuContexto.add(itemEditar);
+		menuContexto.add(itemExcluir);
+		tabela.setComponentPopupMenu(menuContexto);
+		tabela.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				if (e.isPopupTrigger() || SwingUtilities.isRightMouseButton(e)) {
+					int linha = tabela.rowAtPoint(e.getPoint());
+					if (linha >= 0) {
+						tabela.setRowSelectionInterval(linha, linha);
+					}
+					menuContexto.show(tabela, e.getX(), e.getY());
+				}
+			}
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				if (e.isPopupTrigger() || SwingUtilities.isRightMouseButton(e)) {
+					int linha = tabela.rowAtPoint(e.getPoint());
+					if (linha >= 0) {
+						tabela.setRowSelectionInterval(linha, linha);
+					}
+					menuContexto.show(tabela, e.getX(), e.getY());
+				}
+			}
+		});
+
 		var scrollTabela = new JScrollPane(tabela);
 
 		// Label para informações de paginação
@@ -158,6 +191,47 @@ public class TelaPrincipal {
 				infoPaginacao.setText("Página " + (estadoPaginacao.paginaAtual + 1) + " de " + (pagina.getTotalPages() == 0 ? 1 : pagina.getTotalPages()));
 			}
 		};
+
+		itemEditar.addActionListener(_ -> {
+			int linha = tabela.getSelectedRow();
+			if (linha < 0) {
+				return;
+			}
+			Long id = (Long) modeloTabela.getValueAt(linha, 0);
+			Cliente cliente = clienteService.buscarPorId(id);
+			if (cliente != null) {
+				abrirDialogCliente(cliente, carregarPagina, estadoPaginacao, true);
+			}
+		});
+
+		itemExcluir.addActionListener(_ -> {
+			int linha = tabela.getSelectedRow();
+			if (linha < 0) {
+				return;
+			}
+			Long id = (Long) modeloTabela.getValueAt(linha, 0);
+			Cliente cliente = clienteService.buscarPorId(id);
+			if (cliente == null) {
+				return;
+			}
+			String dadosCliente = "Nome: " + cliente.getNome() + "\nE-mail: " + cliente.getEmail() + "\nData de nascimento: " +
+					(cliente.getDataNascimento() != null ? cliente.getDataNascimento().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "-");
+			int confirmacao = JOptionPane.showConfirmDialog(frameConsulta,
+					"Deseja realmente excluir este cliente?\n\n" + dadosCliente,
+					"Confirmar exclusão",
+					JOptionPane.YES_NO_OPTION,
+					JOptionPane.WARNING_MESSAGE);
+			if (confirmacao == JOptionPane.YES_OPTION) {
+				try {
+					clienteService.excluir(id);
+					estadoPaginacao.paginaAtual = 0;
+					carregarPagina.accept(null);
+					JOptionPane.showMessageDialog(frameConsulta, "Cliente excluído com sucesso.");
+				} catch (Exception ex) {
+					JOptionPane.showMessageDialog(frameConsulta, "Erro ao excluir cliente: " + ex.getMessage(), "Erro", JOptionPane.ERROR_MESSAGE);
+				}
+			}
+		});
 
 		// Painel esquerdo com botões
 		var painelEsquerdo = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
@@ -363,7 +437,7 @@ public class TelaPrincipal {
 				if (dataNascimento.getText() != null && !dataNascimento.getText().trim().isEmpty() && data == null) {
 					throw new IllegalArgumentException("Data de nascimento inválida. Use o formato dd/MM/yyyy");
 				}
-				//var cliente = clienteService.cadastrar(nome.getText(), email.getText(), telefone.getText(), data);
+				clienteService.cadastrar(nome.getText(), email.getText(), telefone.getText(), data);
 				status.setText("✓ Cliente cadastrado com sucesso!");
 				nome.setText("");
 				email.setText("");
@@ -398,6 +472,76 @@ public class TelaPrincipal {
 		rodape.add(botoes, BorderLayout.EAST);
 
 		dialog.add(form, BorderLayout.NORTH);
+		dialog.add(rodape, BorderLayout.SOUTH);
+		dialog.setVisible(true);
+	}
+
+	private void abrirDialogCliente(Cliente cliente, java.util.function.Consumer<Object> aposXadastro, Object estadoPaginacao, boolean editar) {
+		var dialog = new JDialog(frameConsulta, (editar ? "Editar" : "Visualizar") + " cliente", true);
+		dialog.setSize(400, 300);
+		dialog.setLocationRelativeTo(frameConsulta);
+		dialog.setLayout(new BorderLayout(8, 8));
+
+		var nome = new JTextField();
+		var email = new JTextField();
+		var telefone = new JTextField();
+		var dataNascimento = new DateInput();
+		var status = new JLabel(" ");
+
+		nome.setText(cliente.getNome());
+		email.setText(cliente.getEmail());
+		telefone.setText(cliente.getTelefone());
+		dataNascimento.setDate(cliente.getDataNascimento());
+
+		var form = new JPanel(new GridLayout(0, 2, 8, 8));
+		form.setBorder(BorderFactory.createEmptyBorder(16, 16, 8, 16));
+		form.add(new JLabel("Nome completo *"));
+		form.add(nome);
+		form.add(new JLabel("E-mail *"));
+		form.add(email);
+		form.add(new JLabel("Telefone"));
+		form.add(telefone);
+		form.add(new JLabel("Data de nascimento (dd/MM/yyyy)"));
+		form.add(dataNascimento);
+
+		var btnSalvar = new JButton(editar ? "Salvar alterações" : "Fechar");
+		btnSalvar.addActionListener(_ -> {
+			if (editar) {
+				try {
+					LocalDate data = dataNascimento.getDate();
+					if (dataNascimento.getText() != null && !dataNascimento.getText().trim().isEmpty() && data == null) {
+						throw new IllegalArgumentException("Data de nascimento inválida. Use o formato dd/MM/yyyy");
+					}
+					clienteService.atualizar(cliente.getId(), nome.getText(), email.getText(), telefone.getText(), data);
+					status.setText("✓ Cliente atualizado com sucesso!");
+					// Atualizar lista após edição
+					aposXadastro.accept(null);
+					// Fechar dialog após 1 segundo
+					new Thread(() -> {
+						try { Thread.sleep(1000); } catch (InterruptedException ignored) {}
+						SwingUtilities.invokeLater(dialog::dispose);
+					}).start();
+				} catch (Exception ex) {
+					status.setText("✗ Erro: " + ex.getMessage());
+				}
+			} else {
+				dialog.dispose();
+			}
+		});
+
+		var btnCancelar = new JButton("Cancelar");
+		btnCancelar.addActionListener(_ -> dialog.dispose());
+
+		var botoes = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+		botoes.add(btnSalvar);
+		botoes.add(btnCancelar);
+
+		var rodape = new JPanel(new BorderLayout(8, 8));
+		rodape.setBorder(BorderFactory.createEmptyBorder(8, 16, 16, 16));
+		rodape.add(status, BorderLayout.WEST);
+		rodape.add(botoes, BorderLayout.EAST);
+
+		dialog.add(form, BorderLayout.CENTER);
 		dialog.add(rodape, BorderLayout.SOUTH);
 		dialog.setVisible(true);
 	}

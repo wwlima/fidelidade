@@ -35,7 +35,38 @@ public class ClienteService {
         if (data == null) return List.of();
         return repository.findByDataNascimento(data);
     }
-    
+
+    public Cliente buscarPorId(Long id) {
+        if (id == null) return null;
+        return repository.findById(id).orElse(null);
+    }
+
+    @Transactional
+    public Cliente atualizar(Long id, String nome, String email, String telefone, LocalDate dataNascimento) {
+        if (id == null) throw new IllegalArgumentException("Identificador do cliente é obrigatório");
+        var cliente = repository.findById(id).orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado"));
+        if (nome == null || nome.isBlank()) throw new IllegalArgumentException("Nome é obrigatório");
+        if (email == null || !email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) throw new IllegalArgumentException("E-mail inválido");
+
+        var clienteComMesmoEmail = repository.findByEmailIgnoreCase(email.trim());
+        if (clienteComMesmoEmail.isPresent() && !clienteComMesmoEmail.get().getId().equals(id)) {
+            throw new IllegalArgumentException("Já existe cliente com este e-mail");
+        }
+
+        cliente.setNome(nome.trim());
+        cliente.setEmail(email.trim().toLowerCase());
+        cliente.setTelefone(telefone == null ? "" : telefone.trim());
+        cliente.setDataNascimento(dataNascimento);
+        return repository.save(cliente);
+    }
+
+    @Transactional
+    public void excluir(Long id) {
+        if (id == null) throw new IllegalArgumentException("Identificador do cliente é obrigatório");
+        if (!repository.existsById(id)) throw new IllegalArgumentException("Cliente não encontrado");
+        repository.deleteById(id);
+    }
+
     public Page<Cliente> listarPaginado(int pagina, int tamanho) {
         return repository.findAllByOrderByNomeAsc(PageRequest.of(pagina, tamanho));
     }
