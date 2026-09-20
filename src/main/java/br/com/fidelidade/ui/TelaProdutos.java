@@ -58,6 +58,69 @@ public class TelaProdutos {
             }
         };
 
+        // Menu de contexto (right-click)
+        var menuContexto = new JPopupMenu();
+        
+        var itemEditar = new javax.swing.JMenuItem("✎ Editar");
+        itemEditar.addActionListener(_ -> {
+            int linha = tabela.getSelectedRow();
+            if (linha >= 0) {
+                var id = (Long) modeloTabela.getValueAt(linha, 0);
+                var nome = (String) modeloTabela.getValueAt(linha, 1);
+                abrirDialogEdicao(frameConsulta, id, nome, carregarPagina);
+            }
+        });
+        
+        var itemExcluir = new javax.swing.JMenuItem("✕ Excluir");
+        itemExcluir.addActionListener(_ -> {
+            int linha = tabela.getSelectedRow();
+            if (linha >= 0) {
+                var id = (Long) modeloTabela.getValueAt(linha, 0);
+                var nome = (String) modeloTabela.getValueAt(linha, 1);
+                int confirmacao = JOptionPane.showConfirmDialog(frameConsulta, 
+                    "Tem certeza que deseja excluir o produto '" + nome + "'?", 
+                    "Confirmação", 
+                    JOptionPane.YES_NO_OPTION);
+                if (confirmacao == JOptionPane.YES_OPTION) {
+                    try {
+                        service.excluir(id);
+                        carregarPagina.accept(null);
+                        JOptionPane.showMessageDialog(frameConsulta, "Produto excluído com sucesso!");
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(frameConsulta, "Erro ao excluir: " + ex.getMessage());
+                    }
+                }
+            }
+        });
+        
+        menuContexto.add(itemEditar);
+        menuContexto.add(itemExcluir);
+        
+        // Adicionar listener de mouse para clique direito
+        tabela.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent evt) {
+                int linha = tabela.rowAtPoint(evt.getPoint());
+                if (linha >= 0) {
+                    tabela.setRowSelectionInterval(linha, linha);
+                }
+                if (evt.isPopupTrigger()) {
+                    menuContexto.show(evt.getComponent(), evt.getX(), evt.getY());
+                }
+            }
+            
+            @Override
+            public void mouseReleased(java.awt.event.MouseEvent evt) {
+                if (evt.isPopupTrigger()) {
+                    int linha = tabela.rowAtPoint(evt.getPoint());
+                    if (linha >= 0) {
+                        tabela.setRowSelectionInterval(linha, linha);
+                    }
+                    menuContexto.show(evt.getComponent(), evt.getX(), evt.getY());
+                }
+            }
+        });
+
         // Painel esquerdo com botões
         var painelEsquerdo = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         painelEsquerdo.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
@@ -172,53 +235,9 @@ public class TelaProdutos {
         painelPaginacao.add(btnProxima);
         painelPaginacao.add(btnUltima);
 
-        // Painel de ações (Editar e Excluir)
-        var painelAcoes = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
-        painelAcoes.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
-        
-        var btnEditar = new JButton("✎ Editar");
-        btnEditar.addActionListener(_ -> {
-            int linha = tabela.getSelectedRow();
-            if (linha < 0) {
-                JOptionPane.showMessageDialog(frameConsulta, "Selecione um produto para editar");
-                return;
-            }
-            var id = (Long) modeloTabela.getValueAt(linha, 0);
-            var nome = (String) modeloTabela.getValueAt(linha, 1);
-            abrirDialogEdicao(frameConsulta, id, nome, carregarPagina);
-        });
-        
-        var btnExcluir = new JButton("✕ Excluir");
-        btnExcluir.addActionListener(_ -> {
-            int linha = tabela.getSelectedRow();
-            if (linha < 0) {
-                JOptionPane.showMessageDialog(frameConsulta, "Selecione um produto para excluir");
-                return;
-            }
-            var id = (Long) modeloTabela.getValueAt(linha, 0);
-            var nome = (String) modeloTabela.getValueAt(linha, 1);
-            int confirmacao = JOptionPane.showConfirmDialog(frameConsulta, 
-                "Tem certeza que deseja excluir o produto '" + nome + "'?", 
-                "Confirmação", 
-                JOptionPane.YES_NO_OPTION);
-            if (confirmacao == JOptionPane.YES_OPTION) {
-                try {
-                    service.excluir(id);
-                    carregarPagina.accept(null);
-                    JOptionPane.showMessageDialog(frameConsulta, "Produto excluído com sucesso!");
-                } catch (Exception ex) {
-                    JOptionPane.showMessageDialog(frameConsulta, "Erro ao excluir: " + ex.getMessage());
-                }
-            }
-        });
-        
-        painelAcoes.add(btnEditar);
-        painelAcoes.add(btnExcluir);
-
-        // Painel inferior combinado: ações + paginação
+        // Painel inferior combinado: esquerdo + paginação
         var painelInferior = new JPanel(new BorderLayout(8, 8));
         painelInferior.add(painelEsquerdo, BorderLayout.WEST);
-        painelInferior.add(painelAcoes, BorderLayout.CENTER);
         painelInferior.add(painelPaginacao, BorderLayout.EAST);
 
         // Painel principal superior combinado: título + separador + busca
