@@ -1,15 +1,32 @@
 package br.com.fidelidade.ui;
 
-import br.com.fidelidade.service.ClienteService;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.stereotype.Component;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
+import java.awt.GraphicsEnvironment;
+import java.awt.GridLayout;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.table.DefaultTableModel;
+
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
+
+import br.com.fidelidade.service.ClienteService;
 
 @Component
 public class TelaPrincipal {
@@ -100,22 +117,22 @@ public class TelaPrincipal {
 			}
 		};
 
-		// Painel superior com botões
-		var painelSuperior = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
-		painelSuperior.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+		// Painel esquerdo com botões
+		var painelEsquerdo = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+		painelEsquerdo.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
 		var btnCadastrar = new JButton("+ Cadastrar novo cliente");
-		btnCadastrar.addActionListener(e -> abrirDialogCadastro(frameConsulta, carregarPagina, estadoPaginacao));
-		painelSuperior.add(btnCadastrar);
+		btnCadastrar.addActionListener(_ -> abrirDialogCadastro(frameConsulta, carregarPagina, estadoPaginacao));
+		painelEsquerdo.add(btnCadastrar);
 		
-		painelSuperior.add(new JLabel("     Registros por página:"));
+		painelEsquerdo.add(new JLabel("     Registros por página:"));
 		var tamanhoComboBox = new JComboBox<>(new Integer[] { 2, 10, 50 });
-		tamanhoComboBox.setSelectedItem(2);
-		tamanhoComboBox.addActionListener(e -> {
+		tamanhoComboBox.setSelectedItem(10);
+		tamanhoComboBox.addActionListener(_ -> {
 			estadoPaginacao.tamanho = (Integer) tamanhoComboBox.getSelectedItem();
 			estadoPaginacao.paginaAtual = 0;
 			carregarPagina.accept(null);
 		});
-		painelSuperior.add(tamanhoComboBox);
+		painelEsquerdo.add(tamanhoComboBox);
 
 		// Painel de filtro/pesquisa
 		var painelFiltro = new JPanel(new GridLayout(2, 4, 8, 8));
@@ -142,7 +159,7 @@ public class TelaPrincipal {
 		painelBotoes.setBorder(BorderFactory.createEmptyBorder(0, 16, 12, 16));
 		
 		var btnPesquisar = new JButton("Pesquisar");
-		btnPesquisar.addActionListener(e -> {
+		btnPesquisar.addActionListener(_ -> {
 			var temNome = campoBuscaNome.getText() != null && !campoBuscaNome.getText().trim().isEmpty();
 			var temEmail = campoBuscaEmail.getText() != null && !campoBuscaEmail.getText().trim().isEmpty();
 			var temData = campoBuscaData.getText() != null && !campoBuscaData.getText().trim().isEmpty() && !campoBuscaData.getText().equals("dd/MM/yyyy");
@@ -181,7 +198,7 @@ public class TelaPrincipal {
 		});
 		
 		var btnLimpar = new JButton("Limpar");
-		btnLimpar.addActionListener(e -> {
+		btnLimpar.addActionListener(_ -> {
 			campoBuscaNome.setText("");
 			campoBuscaEmail.setText("");
 			campoBuscaData.setText("dd/MM/yyyy");
@@ -201,13 +218,13 @@ public class TelaPrincipal {
 		painelPaginacao.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
 		
 		var btnPrimeira = new JButton("« Primeira");
-		btnPrimeira.addActionListener(e -> {
+		btnPrimeira.addActionListener(_ -> {
 			estadoPaginacao.paginaAtual = 0;
 			carregarPagina.accept(null);
 		});
 		
 		var btnAnterior = new JButton("‹ Anterior");
-		btnAnterior.addActionListener(e -> {
+		btnAnterior.addActionListener(_ -> {
 			if (estadoPaginacao.paginaAtual > 0) {
 				estadoPaginacao.paginaAtual--;
 				carregarPagina.accept(null);
@@ -215,13 +232,13 @@ public class TelaPrincipal {
 		});
 		
 		var btnProxima = new JButton("Próxima ›");
-		btnProxima.addActionListener(e -> {
+		btnProxima.addActionListener(_ -> {
 			estadoPaginacao.paginaAtual++;
 			carregarPagina.accept(null);
 		});
 		
 		var btnUltima = new JButton("Última »");
-		btnUltima.addActionListener(e -> {
+		btnUltima.addActionListener(_ -> {
 			var pagina = service.listarPaginado(0, estadoPaginacao.tamanho);
 			if (estadoPaginacao.tipoFiltro == 1 && !estadoPaginacao.filtroNome.isEmpty()) {
 				pagina = service.buscarPorNomePaginado(estadoPaginacao.filtroNome, 0, estadoPaginacao.tamanho);
@@ -240,11 +257,15 @@ public class TelaPrincipal {
 		painelPaginacao.add(btnProxima);
 		painelPaginacao.add(btnUltima);
 
-		frameConsulta.add(painelSuperior, BorderLayout.PAGE_START);
+		// Painel inferior combinado: esquerdo + paginação
+		var painelInferior = new JPanel(new BorderLayout(8, 8));
+		painelInferior.add(painelEsquerdo, BorderLayout.WEST);
+		painelInferior.add(painelPaginacao, BorderLayout.EAST);
+
 		frameConsulta.add(painelFiltro, BorderLayout.NORTH);
 		frameConsulta.add(painelBotoes, BorderLayout.BEFORE_FIRST_LINE);
 		frameConsulta.add(scrollTabela, BorderLayout.CENTER);
-		frameConsulta.add(painelPaginacao, BorderLayout.SOUTH);
+		frameConsulta.add(painelInferior, BorderLayout.SOUTH);
 		
 		// Carregar os primeiros 10 registros ao abrir
 		carregarPagina.accept(null);
@@ -276,7 +297,7 @@ public class TelaPrincipal {
 		form.add(dataNascimento);
 
 		var btnCadastrar = new JButton("Cadastrar");
-		btnCadastrar.addActionListener(e -> {
+		btnCadastrar.addActionListener(_ -> {
 			try {
 				LocalDate data = null;
 				if (dataNascimento.getText() != null && !dataNascimento.getText().isEmpty() && !dataNascimento.getText().equals("dd/MM/yyyy")) {
@@ -286,7 +307,7 @@ public class TelaPrincipal {
 						throw new IllegalArgumentException("Data de nascimento inválida. Use o formato dd/MM/yyyy");
 					}
 				}
-				var cliente = service.cadastrar(nome.getText(), email.getText(), telefone.getText(), data);
+				//var cliente = service.cadastrar(nome.getText(), email.getText(), telefone.getText(), data);
 				status.setText("✓ Cliente cadastrado com sucesso!");
 				nome.setText("");
 				email.setText("");
@@ -309,7 +330,7 @@ public class TelaPrincipal {
 		});
 
 		var btnCancelar = new JButton("Cancelar");
-		btnCancelar.addActionListener(e -> dialog.dispose());
+		btnCancelar.addActionListener(_ -> dialog.dispose());
 
 		var botoes = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
 		botoes.add(btnCadastrar);
