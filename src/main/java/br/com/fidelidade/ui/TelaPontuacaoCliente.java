@@ -448,34 +448,6 @@ public class TelaPontuacaoCliente extends JPanel {
 		
 		btnLimpar.addActionListener(_ -> {
 			limparTudo();
-//		    clienteSelecionado[0] = null;
-//		    produtoSelecionado[0] = null;
-//		    campanhaSelecionada[0] = null;
-//
-//		    comboCliente.setSelectedItem("");
-//		    txtCliente.setText("");
-//		    modeloCliente.setRowCount(0);
-//		    popupClientes.setVisible(false);
-//
-//		    comboProduto.setSelectedItem("");
-//		    txtProduto.setText("");
-//		    modeloProduto.setRowCount(0);
-//		    popupProdutos.setVisible(false);
-//		    comboProduto.setEnabled(false);
-//
-//		    comboCampanha.setSelectedItem("");
-//		    txtCampanha.setText("");
-//		    modeloCampanha.setRowCount(0);
-//		    popupCampanhas.setVisible(false);
-//		    comboCampanha.setEnabled(false);
-//
-//		    painelHistorico.setVisible(false);
-//		    modeloHistorico.setRowCount(0);
-//		    txtQuantidade.setText("");
-//
-//		    btnPontuar.setEnabled(false);
-//
-//		    comboCliente.requestFocusInWindow();
 		});
 		
 		
