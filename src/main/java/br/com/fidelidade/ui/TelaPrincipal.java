@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import br.com.fidelidade.service.CampanhaService;
 import br.com.fidelidade.service.ClienteService;
+import br.com.fidelidade.service.PontuacaoClienteService;
 import br.com.fidelidade.service.ProdutoService;
 
 @Component
@@ -24,14 +25,16 @@ public class TelaPrincipal {
     private final TelaClientes telaClientes;
     private final TelaProdutos telaProdutos;
     private final TelaCampanhas telaCampanhas;
+    private final TelaPontuacaoCliente telaPontuacaoCliente;
     private JFrame frameConsulta;
 
-    public TelaPrincipal(ClienteService clienteService, ProdutoService produtoService, CampanhaService campanhaService) {
+    public TelaPrincipal(ClienteService clienteService, ProdutoService produtoService, CampanhaService campanhaService, PontuacaoClienteService pontuacaoClienteService) {
         this.clienteService = clienteService;
         this.produtoService = produtoService;
         this.telaClientes = new TelaClientes(clienteService);
         this.telaProdutos = new TelaProdutos(produtoService);
         this.telaCampanhas = new TelaCampanhas(campanhaService);
+        this.telaPontuacaoCliente = new TelaPontuacaoCliente(clienteService, produtoService, campanhaService, pontuacaoClienteService);
     }
 
     /**
@@ -52,6 +55,9 @@ public class TelaPrincipal {
         });
     }
 
+    /**
+     * @wbp.parser.entryPoint
+     */
     private void criarJanelaConsulta() {
         frameConsulta = new JFrame("Fidelidade");
         frameConsulta.setSize(950, 600);
@@ -78,9 +84,15 @@ public class TelaPrincipal {
         var itemCampanhas = new JMenuItem("Campanhas");
         itemCampanhas.addActionListener(_ -> telaCampanhas.abrirTelaConsulta(frameConsulta));
 
+        var itemPontuacao = new JMenuItem("Pontuação de clientes");
+        itemPontuacao.addActionListener(_ -> {telaPontuacaoCliente.abrirTelaConsulta(frameConsulta);});
+        
+        
+
         menuGestao.add(itemClientes);
         menuGestao.add(itemProdutos);
         menuGestao.add(itemCampanhas);
+        menuGestao.add(itemPontuacao);
         menuBar.add(menuGestao);
 
         frameConsulta.setJMenuBar(menuBar);
