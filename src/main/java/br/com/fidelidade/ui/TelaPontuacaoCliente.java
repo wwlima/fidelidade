@@ -2,27 +2,24 @@ package br.com.fidelidade.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.SwingUtilities;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableModel;
 
 import br.com.fidelidade.domain.Campanha;
@@ -35,475 +32,340 @@ import br.com.fidelidade.service.PontuacaoClienteService;
 import br.com.fidelidade.service.ProdutoService;
 
 public class TelaPontuacaoCliente extends JPanel {
-	private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 1L;
+    private static final DateTimeFormatter FORMATO_DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-	private final ClienteService clienteService;
-	private final ProdutoService produtoService;
-	private final CampanhaService campanhaService;
-	private final PontuacaoClienteService pontuacaoClienteService;
+    private final ClienteService clienteService;
+    private final ProdutoService produtoService;
+    private final CampanhaService campanhaService;
+    private final PontuacaoClienteService pontuacaoClienteService;
 
-	private JFrame frameConsulta;
-	private Cliente[] clienteSelecionado;
-	private Produto[] produtoSelecionado;
-	private Campanha[] campanhaSelecionada;
-	
-    // Componentes que precisam ser limpos na abertura da tela
-    private JComboBox<String> comboCliente;
-    private JComboBox<String> comboProduto;
-    private JComboBox<String> comboCampanha;
-    private JTextField txtCliente;
-    private JTextField txtProduto;
-    private JTextField txtCampanha;
-    private JPopupMenu popupClientes;
-    private JPopupMenu popupProdutos;
-    private JPopupMenu popupCampanhas;
-    private DefaultTableModel modeloCliente;
-    private DefaultTableModel modeloProduto;
-    private DefaultTableModel modeloCampanha;
-    private DefaultTableModel modeloHistorico;
+    private JFrame frameConsulta;
+    private final Cliente[] clienteSelecionado = new Cliente[1];
+    private final Produto[] produtoSelecionado = new Produto[1];
+    private final Campanha[] campanhaSelecionada = new Campanha[1];
+
+    private ComboBuscaPanel painelBuscaCliente;
+    private ComboBuscaPanel painelBuscaProduto;
+    private ComboBuscaPanel painelBuscaCampanha;
+
     private JPanel painelHistorico;
+    private DefaultTableModel modeloHistorico;
     private JTextField txtQuantidade;
     private JButton btnPontuar;
 
-	public TelaPontuacaoCliente(ClienteService clienteService, ProdutoService produtoService,
-			CampanhaService campanhaService, PontuacaoClienteService pontuacaoClienteService) {
-		this.clienteService = clienteService;
-		this.produtoService = produtoService;
-		this.campanhaService = campanhaService;
-		this.pontuacaoClienteService = pontuacaoClienteService;
+    public TelaPontuacaoCliente(ClienteService clienteService, ProdutoService produtoService,
+            CampanhaService campanhaService, PontuacaoClienteService pontuacaoClienteService) {
+        this.clienteService = clienteService;
+        this.produtoService = produtoService;
+        this.campanhaService = campanhaService;
+        this.pontuacaoClienteService = pontuacaoClienteService;
 
-		clienteSelecionado = new Cliente[1];
-		produtoSelecionado = new Produto[1];
-		campanhaSelecionada = new Campanha[1];
+        inicializarComponentes();
+    }
 
-		inicializarComponentes();
-	}
+    /**
+     * @wbp.parser.entryPoint
+     */
+    private void inicializarComponentes() {
+        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
 
-	/**
-	 * @wbp.parser.entryPoint
-	 */
-	private void inicializarComponentes() {
-		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-		setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
+        add(criarPainelSelecao());
+        add(Box.createVerticalStrut(12));
+        add(new JSeparator());
+        add(Box.createVerticalStrut(8));
+        add(criarPainelHistorico());
+        add(criarPainelAcoes());
 
-		var painelSelecao = new JPanel();
-		painelSelecao.setLayout(new BoxLayout(painelSelecao, BoxLayout.Y_AXIS));
-		painelSelecao.setBorder(BorderFactory.createTitledBorder("Seleção"));
+        configurarBuscas();
+        configurarSelecoes();
+        configurarAcoes();
+    }
 
-		var painelCliente = new JPanel(new BorderLayout(4, 4));
-		painelCliente.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
-		var lblCliente = new JLabel("Cliente");
-		comboCliente = new JComboBox<String>();
-		comboCliente.setEditable(true);
-		comboCliente.setPrototypeDisplayValue("Cliente muito longo para teste");
-		txtCliente = (JTextField) comboCliente.getEditor().getEditorComponent();
+    // ---------- Construção visual ----------
 
-		modeloCliente = criarModeloTabela(new String[] { "ID", "Nome", "E-mail" });
-		var tabelaClientes = new JTable(modeloCliente);
-		tabelaClientes.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		tabelaClientes.setFillsViewportHeight(true);
-		var scrollClientes = new JScrollPane(tabelaClientes);
-		scrollClientes.setPreferredSize(new java.awt.Dimension(600, 250));
+    private JPanel criarPainelSelecao() {
+        var painelSelecao = new JPanel();
+        painelSelecao.setLayout(new BoxLayout(painelSelecao, BoxLayout.Y_AXIS));
+        painelSelecao.setBorder(BorderFactory.createTitledBorder("Seleção"));
 
-		popupClientes = new JPopupMenu();
-		popupClientes.add(scrollClientes);
+        painelBuscaCliente = new ComboBuscaPanel("Cliente",
+                new String[] { "ID", "Nome", "E-mail" }, new Dimension(600, 250));
 
-		painelCliente.add(lblCliente, BorderLayout.NORTH);
-		painelCliente.add(comboCliente, BorderLayout.CENTER);
+        painelBuscaProduto = new ComboBuscaPanel("Produto",
+                new String[] { "ID", "Nome" }, new Dimension(300, 150));
+        painelBuscaProduto.habilitar(false);
 
-		var painelProduto = new JPanel(new BorderLayout(8, 8));
-		painelProduto.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
-		var lblProduto = new JLabel("Produto");
-		comboProduto = new JComboBox<String>();
-		comboProduto.setEditable(true);
-		comboProduto.setEnabled(false);
-		txtProduto = (JTextField) comboProduto.getEditor().getEditorComponent();
+        painelBuscaCampanha = new ComboBuscaPanel("Campanha",
+                new String[] { "ID", "Nome", "Início", "Fim", "Ativa" }, new Dimension(300, 150));
+        painelBuscaCampanha.habilitar(false);
 
-		modeloProduto = criarModeloTabela(new String[] { "ID", "Nome" });
-		var tabelaProdutos = new JTable(modeloProduto);
-		tabelaProdutos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		tabelaProdutos.setFillsViewportHeight(true);
-		var scrollProdutos = new JScrollPane(tabelaProdutos);
-		scrollProdutos.setPreferredSize(new java.awt.Dimension(300, 150));
+        painelSelecao.add(painelBuscaCliente);
+        painelSelecao.add(Box.createVerticalStrut(10));
+        painelSelecao.add(painelBuscaProduto);
+        painelSelecao.add(Box.createVerticalStrut(10));
+        painelSelecao.add(painelBuscaCampanha);
 
-		popupProdutos = new JPopupMenu();
-		popupProdutos.add(scrollProdutos);
+        return painelSelecao;
+    }
 
-		painelProduto.add(lblProduto, BorderLayout.NORTH);
-		painelProduto.add(comboProduto, BorderLayout.CENTER);
+    private JPanel criarPainelHistorico() {
+        painelHistorico = new JPanel(new BorderLayout(8, 8));
+        painelHistorico.setBorder(BorderFactory.createTitledBorder("Cadastros da pontuação"));
+        painelHistorico.setVisible(false);
 
-		var painelCampanha = new JPanel(new BorderLayout(8, 8));
-		painelCampanha.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
-		var lblCampanha = new JLabel("Campanha");
-		comboCampanha = new JComboBox<String>();
-		comboCampanha.setEditable(true);
-		comboCampanha.setEnabled(false);
-		txtCampanha = (JTextField) comboCampanha.getEditor().getEditorComponent();
+        modeloHistorico = criarModeloTabela(new String[] { "Cliente", "Produto", "Campanha", "Quantidade", "Data" });
+        var tabelaHistorico = new JTable(modeloHistorico);
+        tabelaHistorico.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tabelaHistorico.setFillsViewportHeight(true);
+        var scrollHistorico = new JScrollPane(tabelaHistorico);
 
-		modeloCampanha = criarModeloTabela(new String[] { "ID", "Nome", "Início", "Fim", "Ativa" });
-		var tabelaCampanhas = new JTable(modeloCampanha);
-		tabelaCampanhas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		tabelaCampanhas.setFillsViewportHeight(true);
-		var scrollCampanhas = new JScrollPane(tabelaCampanhas);
-		scrollCampanhas.setPreferredSize(new java.awt.Dimension(300, 150));
+        painelHistorico.add(scrollHistorico, BorderLayout.CENTER);
+        painelHistorico.add(criarPainelQuantidade(), BorderLayout.SOUTH);
 
-		popupCampanhas = new JPopupMenu();
-		popupCampanhas.add(scrollCampanhas);
+        return painelHistorico;
+    }
 
-		painelCampanha.add(lblCampanha, BorderLayout.NORTH);
-		painelCampanha.add(comboCampanha, BorderLayout.CENTER);
-
-		painelSelecao.add(painelCliente);
-		painelSelecao.add(Box.createVerticalStrut(10));
-		painelSelecao.add(painelProduto);
-		painelSelecao.add(Box.createVerticalStrut(10));
-		painelSelecao.add(painelCampanha);
-
-		add(painelSelecao);
-		add(Box.createVerticalStrut(12));
-		add(new JSeparator());
-		add(Box.createVerticalStrut(8));
-
-		painelHistorico = new JPanel(new BorderLayout(8, 8));
-		painelHistorico.setBorder(BorderFactory.createTitledBorder("Cadastros da pontuação"));
-		painelHistorico.setVisible(false);
-
-		modeloHistorico = criarModeloTabela(
-				new String[] { "Cliente", "Produto", "Campanha", "Quantidade", "Data" });
-		var tabelaHistorico = new JTable(modeloHistorico);
-		tabelaHistorico.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		tabelaHistorico.setFillsViewportHeight(true);
-		var scrollHistorico = new JScrollPane(tabelaHistorico);
-		
-		var painelQuantidade = new JPanel(new BorderLayout(8, 8));
+    private JPanel criarPainelQuantidade() {
+        var painelQuantidade = new JPanel(new BorderLayout(8, 8));
         txtQuantidade = new JTextField();
         txtQuantidade.setEditable(false);
         txtQuantidade.setBackground(new Color(245, 245, 245));
         txtQuantidade.setHorizontalAlignment(JTextField.RIGHT);
-        
+
         painelQuantidade.add(new JLabel("Quantidade de pontos"), BorderLayout.WEST);
         painelQuantidade.add(txtQuantidade, BorderLayout.CENTER);
+        return painelQuantidade;
+    }
 
-		painelHistorico.add(scrollHistorico, BorderLayout.CENTER);
-		painelHistorico.add(painelQuantidade, BorderLayout.SOUTH);
+    private JPanel criarPainelAcoes() {
+        var painelAcoes = new JPanel(new BorderLayout(8, 8));
+        painelAcoes.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        painelAcoes.add(new JSeparator(), BorderLayout.NORTH);
 
-		add(painelHistorico);
+        var painelBotao = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        btnPontuar = new JButton("Pontuar");
+        btnPontuar.setEnabled(false);
+        var btnLimpar = new JButton("Limpar");
 
-		var painelAcoes = new JPanel(new BorderLayout(8, 8));
-		painelAcoes.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
-		painelAcoes.add(new JSeparator(), BorderLayout.NORTH);
-		var painelBotao = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        painelBotao.add(btnPontuar);
+        painelBotao.add(btnLimpar);
+        painelAcoes.add(painelBotao, BorderLayout.CENTER);
 
-		btnPontuar = new JButton("Pontuar");
-		btnPontuar.setEnabled(false);
-		
-		var btnLimpar = new JButton("Limpar");
-		
-		painelBotao.add(btnPontuar);
-		painelBotao.add(btnLimpar);
-		
-		painelAcoes.add(painelBotao, BorderLayout.CENTER);
-		add(painelAcoes);
+        btnLimpar.addActionListener(_ -> limparTudo());
 
-		Runnable atualizarHistorico = () -> {
-			if (clienteSelecionado[0] == null) {
-				painelHistorico.setVisible(false);
-		        modeloHistorico.setRowCount(0);
-		        txtQuantidade.setText("");
-		        btnPontuar.setEnabled(false);
-				return;
-			}
+        return painelAcoes;
+    }
 
-			List<PontuacaoClienteDTO> cadastros = pontuacaoClienteService.listarPorCliente(clienteSelecionado[0].getId());
+    // ---------- Configuração de eventos ----------
 
-			List<PontuacaoClienteDTO> filtrados = cadastros.stream().filter(
-					p -> produtoSelecionado[0] == null || p.produtoNome().equals(produtoSelecionado[0].getNome()))
-					.filter(p -> campanhaSelecionada[0] == null
-							|| p.campanhaNome().equals(campanhaSelecionada[0].getNome()))
-					.toList();
+    private void configurarBuscas() {
+        painelBuscaCliente.configurarBusca(this::carregarClientes);
+        painelBuscaProduto.configurarBusca(this::carregarProdutos);
+        painelBuscaCampanha.configurarBusca(this::carregarCampanhas);
+    }
 
-			painelHistorico.setVisible(true);
-			modeloHistorico.setRowCount(0);
-			filtrados
-					.forEach(registro -> modeloHistorico.addRow(new Object[] { registro.clienteNome(),
-							registro.produtoNome(), registro.campanhaNome(), registro.quantidade(),
-							registro.dataCadastro() != null
-									? registro.dataCadastro().toLocalDate().format(
-											java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-									: "" }));
+    private void configurarSelecoes() {
+        painelBuscaCliente.configurarSelecao(this::selecionarCliente);
+        painelBuscaProduto.configurarSelecao(this::selecionarProduto);
+        painelBuscaCampanha.configurarSelecao(this::selecionarCampanha);
+    }
 
-			 // Só consulta a quantidade exata quando produto E campanha já estiverem selecionados
-		    if (produtoSelecionado[0] != null && campanhaSelecionada[0] != null) {
-		        var registroAtual = pontuacaoClienteService.buscarPorClienteProdutoCampanha(
-		                clienteSelecionado[0].getId(),
-		                produtoSelecionado[0].getId(),
-		                campanhaSelecionada[0].getId()).orElse(null);
+    private void configurarAcoes() {
+        btnPontuar.addActionListener(_ -> pontuar());
+    }
 
-		        txtQuantidade.setText(registroAtual != null ? String.valueOf(registroAtual.quantidade()) : "0");
-		    } else {
-		        txtQuantidade.setText("");
-		    }
+    // ---------- Carregamento das buscas ----------
 
-		    btnPontuar.setEnabled(produtoSelecionado[0] != null && campanhaSelecionada[0] != null);
-		};
+    private void carregarClientes() {
+        var modelo = painelBuscaCliente.getModelo();
+        modelo.setRowCount(0);
 
-		Runnable carregarClientes = () -> {
-			modeloCliente.setRowCount(0);
-			var texto = txtCliente.getText() == null ? "" : txtCliente.getText().trim();
-			if (texto.isEmpty() || texto.length() < 3) {
-				popupClientes.setVisible(false);
-				return;
-			}
+        var texto = painelBuscaCliente.getTextoDigitado();
+        if (texto.length() < 3) {
+            painelBuscaCliente.esconderPopup();
+            return;
+        }
 
-			clienteService.buscarPorNome(texto).stream().limit(10)
-					.forEach(c -> modeloCliente.addRow(new Object[] { c.getId(), c.getNome(), c.getEmail() }));
+        clienteService.buscarPorNome(texto).stream().limit(10)
+                .forEach(c -> modelo.addRow(new Object[] { c.getId(), c.getNome(), c.getEmail() }));
 
-			if (modeloCliente.getRowCount() > 0) {
-				popupClientes.show(comboCliente, 0, comboCliente.getHeight());
-			} else {
-				popupClientes.setVisible(false);
-			}
-		};
+        painelBuscaCliente.mostrarPopup();
+    }
 
-		Runnable carregarProdutos = () -> {
-			modeloProduto.setRowCount(0);
-			var texto = txtProduto.getText() == null ? "" : txtProduto.getText().trim();
-			if (texto.isEmpty()) {
-				popupProdutos.setVisible(false);
-				return;
-			}
+    private void carregarProdutos() {
+        var modelo = painelBuscaProduto.getModelo();
+        modelo.setRowCount(0);
 
-			produtoService.buscarPorNome(texto).stream().limit(10)
-					.forEach(p -> modeloProduto.addRow(new Object[] { p.getId(), p.getNome() }));
+        var texto = painelBuscaProduto.getTextoDigitado();
+        if (texto.isEmpty()) {
+            painelBuscaProduto.esconderPopup();
+            return;
+        }
 
-			if (modeloProduto.getRowCount() > 0) {
-				popupProdutos.show(comboProduto, 0, comboProduto.getHeight());
-			} else {
-				popupProdutos.setVisible(false);
-			}
-		};
+        produtoService.buscarPorNome(texto).stream().limit(10)
+                .forEach(p -> modelo.addRow(new Object[] { p.getId(), p.getNome() }));
 
-		Runnable carregarCampanhas = () -> {
-			modeloCampanha.setRowCount(0);
-			var texto = txtCampanha.getText() == null ? "" : txtCampanha.getText().trim();
-			if (texto.isEmpty()) {
-				popupCampanhas.setVisible(false);
-				return;
-			}
+        painelBuscaProduto.mostrarPopup();
+    }
 
-			campanhaService.buscarPorNomePaginado(texto, 0, 10)
-					.forEach(c -> modeloCampanha.addRow(new Object[] { c.getId(), c.getNome(),
-							c.getDataInicioVigencia()
-									.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-							c.getDataFimVigencia().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-							c.isAtivo() ? "Sim" : "Não" }));
+    private void carregarCampanhas() {
+        var modelo = painelBuscaCampanha.getModelo();
+        modelo.setRowCount(0);
 
-			if (modeloCampanha.getRowCount() > 0) {
-				popupCampanhas.show(comboCampanha, 0, comboCampanha.getHeight());
-			} else {
-				popupCampanhas.setVisible(false);
-			}
-		};
+        var texto = painelBuscaCampanha.getTextoDigitado();
+        if (texto.isEmpty()) {
+            painelBuscaCampanha.esconderPopup();
+            return;
+        }
 
-		txtCliente.getDocument().addDocumentListener(new DocumentListener() {
-			private void onChange() {
-				SwingUtilities.invokeLater(carregarClientes);
-				txtCliente.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.WAIT_CURSOR));
-			}
+        campanhaService.buscarPorNomePaginado(texto, 0, 10).forEach(c -> modelo.addRow(new Object[] {
+                c.getId(), c.getNome(),
+                c.getDataInicioVigencia().format(FORMATO_DATA),
+                c.getDataFimVigencia().format(FORMATO_DATA),
+                c.isAtivo() ? "Sim" : "Não"
+        }));
 
-			@Override
-			public void insertUpdate(DocumentEvent e) {
-				onChange();
-			}
+        painelBuscaCampanha.mostrarPopup();
+    }
 
-			@Override
-			public void removeUpdate(DocumentEvent e) {
-				onChange();
-			}
+    // ---------- Seleção nas tabelas ----------
 
-			@Override
-			public void changedUpdate(DocumentEvent e) {
-				onChange();
-			}
-		});
+    private void selecionarCliente(int linha) {
+        Long id = ((Number) painelBuscaCliente.getModelo().getValueAt(linha, 0)).longValue();
+        clienteSelecionado[0] = clienteService.buscarPorId(id);
 
-		txtProduto.getDocument().addDocumentListener(new DocumentListener() {
-			private void onChange() {
-				SwingUtilities.invokeLater(carregarProdutos);
-			}
+        if (clienteSelecionado[0] != null) {
+            painelBuscaCliente.selecionarTexto(clienteSelecionado[0].getNome());
+            painelBuscaProduto.habilitar(true);
+            painelBuscaProduto.limpar();
+            painelBuscaCampanha.habilitar(false);
+            painelBuscaCampanha.limpar();
+            painelBuscaProduto.focar();
+        }
 
-			@Override
-			public void insertUpdate(DocumentEvent e) {
-				onChange();
-			}
+        produtoSelecionado[0] = null;
+        campanhaSelecionada[0] = null;
+        atualizarHistorico();
+    }
 
-			@Override
-			public void removeUpdate(DocumentEvent e) {
-				onChange();
-			}
+    private void selecionarProduto(int linha) {
+        Long id = ((Number) painelBuscaProduto.getModelo().getValueAt(linha, 0)).longValue();
+        produtoSelecionado[0] = produtoService.buscarPorId(id).orElse(null);
 
-			@Override
-			public void changedUpdate(DocumentEvent e) {
-				onChange();
-			}
-		});
+        if (produtoSelecionado[0] != null) {
+            painelBuscaProduto.selecionarTexto(produtoSelecionado[0].getNome());
+            painelBuscaCampanha.habilitar(true);
+            painelBuscaCampanha.limpar();
+            painelBuscaCampanha.focar();
+        }
 
-		txtCampanha.getDocument().addDocumentListener(new DocumentListener() {
-			private void onChange() {
-				SwingUtilities.invokeLater(carregarCampanhas);
-			}
+        campanhaSelecionada[0] = null;
+        atualizarHistorico();
+    }
 
-			@Override
-			public void insertUpdate(DocumentEvent e) {
-				onChange();
-			}
+    private void selecionarCampanha(int linha) {
+        Long id = ((Number) painelBuscaCampanha.getModelo().getValueAt(linha, 0)).longValue();
+        campanhaSelecionada[0] = campanhaService.buscarPorId(id).orElse(null);
 
-			@Override
-			public void removeUpdate(DocumentEvent e) {
-				onChange();
-			}
+        if (campanhaSelecionada[0] != null) {
+            painelBuscaCampanha.selecionarTexto(campanhaSelecionada[0].getNome());
+        }
 
-			@Override
-			public void changedUpdate(DocumentEvent e) {
-				onChange();
-			}
-		});
+        atualizarHistorico();
+    }
 
-		tabelaClientes.getSelectionModel().addListSelectionListener(_ -> {
-			if (tabelaClientes.getSelectedRow() < 0) {
-				return;
-			}
-			Long id = ((Number) modeloCliente.getValueAt(tabelaClientes.getSelectedRow(), 0)).longValue();
-			clienteSelecionado[0] = clienteService.buscarPorId(id);
-			if (clienteSelecionado[0] != null) {
-				comboCliente.setSelectedItem(clienteSelecionado[0].getNome());
-				popupClientes.setVisible(false);
-				comboProduto.setEnabled(true);
-				comboProduto.setSelectedItem("");
-				txtProduto.setText("");
-				modeloProduto.setRowCount(0);
-				popupProdutos.setVisible(false);
-				comboCampanha.setEnabled(false);
-				comboCampanha.setSelectedItem("");
-				txtCampanha.setText("");
-				modeloCampanha.setRowCount(0);
-				popupCampanhas.setVisible(false);
-				comboProduto.requestFocusInWindow();
-			}
-			produtoSelecionado[0] = null;
-			campanhaSelecionada[0] = null;
-			atualizarHistorico.run();
-		});
+    // ---------- Histórico e pontuação ----------
 
-		tabelaProdutos.getSelectionModel().addListSelectionListener(_ -> {
-			if (tabelaProdutos.getSelectedRow() < 0) {
-				return;
-			}
-			Long id = ((Number) modeloProduto.getValueAt(tabelaProdutos.getSelectedRow(), 0)).longValue();
-			produtoSelecionado[0] = produtoService.buscarPorId(id).orElse(null);
-			if (produtoSelecionado[0] != null) {
-				comboProduto.setSelectedItem(produtoSelecionado[0].getNome());
-				popupProdutos.setVisible(false);
-				comboCampanha.setEnabled(true);
-				comboCampanha.setSelectedItem("");
-				txtCampanha.setText("");
-				modeloCampanha.setRowCount(0);
-				popupCampanhas.setVisible(false);
-				comboCampanha.requestFocusInWindow();
-			}
-			campanhaSelecionada[0] = null;
-			atualizarHistorico.run();
-		});
+    private void atualizarHistorico() {
+        if (clienteSelecionado[0] == null) {
+            painelHistorico.setVisible(false);
+            modeloHistorico.setRowCount(0);
+            txtQuantidade.setText("");
+            btnPontuar.setEnabled(false);
+            return;
+        }
 
-		tabelaCampanhas.getSelectionModel().addListSelectionListener(_ -> {
-			if (tabelaCampanhas.getSelectedRow() < 0) {
-				return;
-			}
-			Long id = ((Number) modeloCampanha.getValueAt(tabelaCampanhas.getSelectedRow(), 0)).longValue();
-			campanhaSelecionada[0] = campanhaService.buscarPorId(id).orElse(null);
-			if (campanhaSelecionada[0] != null) {
-				comboCampanha.setSelectedItem(campanhaSelecionada[0].getNome());
-				popupCampanhas.setVisible(false);
-			}
-			atualizarHistorico.run();
-		});
+        List<PontuacaoClienteDTO> cadastros = pontuacaoClienteService.listarPorCliente(clienteSelecionado[0].getId());
 
-		btnPontuar.addActionListener(_ -> {
-			if (clienteSelecionado[0] == null || produtoSelecionado[0] == null || campanhaSelecionada[0] == null) {
-				JOptionPane.showMessageDialog(frameConsulta, "Selecione cliente, produto e campanha antes de pontuar.");
-				return;
-			}
+        List<PontuacaoClienteDTO> filtrados = cadastros.stream()
+                .filter(p -> produtoSelecionado[0] == null || p.produtoNome().equals(produtoSelecionado[0].getNome()))
+                .filter(p -> campanhaSelecionada[0] == null || p.campanhaNome().equals(campanhaSelecionada[0].getNome()))
+                .toList();
 
-			try {
-				var registro = pontuacaoClienteService.pontuar(clienteSelecionado[0].getId(),
-						produtoSelecionado[0].getId(), campanhaSelecionada[0].getId());
-				JOptionPane.showMessageDialog(frameConsulta,
-						"Pontos registrados com sucesso! Quantidade atual: " + registro.quantidade());
-				atualizarHistorico.run();
-			} catch (Exception ex) {
-				JOptionPane.showMessageDialog(frameConsulta, "Erro ao pontuar: " + ex.getMessage(), "Erro",
-						JOptionPane.ERROR_MESSAGE);
-			}
-		});
-		
-		btnLimpar.addActionListener(_ -> {
-			limparTudo();
-		});
-		
-		
-	}
+        painelHistorico.setVisible(true);
+        modeloHistorico.setRowCount(0);
+        filtrados.forEach(registro -> modeloHistorico.addRow(new Object[] {
+                registro.clienteNome(), registro.produtoNome(), registro.campanhaNome(), registro.quantidade(),
+                registro.dataCadastro() != null ? registro.dataCadastro().toLocalDate().format(FORMATO_DATA) : ""
+        }));
 
-	private void limparTudo() {
-	    clienteSelecionado[0] = null;
-	    produtoSelecionado[0] = null;
-	    campanhaSelecionada[0] = null;
+        if (produtoSelecionado[0] != null && campanhaSelecionada[0] != null) {
+            var registroAtual = pontuacaoClienteService.buscarPorClienteProdutoCampanha(
+                    clienteSelecionado[0].getId(), produtoSelecionado[0].getId(), campanhaSelecionada[0].getId())
+                    .orElse(null);
 
-	    comboCliente.setSelectedItem("");
-	    txtCliente.setText("");
-	    modeloCliente.setRowCount(0);
-	    popupClientes.setVisible(false);
+            txtQuantidade.setText(registroAtual != null ? String.valueOf(registroAtual.quantidade()) : "0");
+        } else {
+            txtQuantidade.setText("");
+        }
 
-	    comboProduto.setSelectedItem("");
-	    txtProduto.setText("");
-	    modeloProduto.setRowCount(0);
-	    popupProdutos.setVisible(false);
-	    comboProduto.setEnabled(false);
+        btnPontuar.setEnabled(produtoSelecionado[0] != null && campanhaSelecionada[0] != null);
+    }
 
-	    comboCampanha.setSelectedItem("");
-	    txtCampanha.setText("");
-	    modeloCampanha.setRowCount(0);
-	    popupCampanhas.setVisible(false);
-	    comboCampanha.setEnabled(false);
+    private void pontuar() {
+        if (clienteSelecionado[0] == null || produtoSelecionado[0] == null || campanhaSelecionada[0] == null) {
+            JOptionPane.showMessageDialog(frameConsulta, "Selecione cliente, produto e campanha antes de pontuar.");
+            return;
+        }
 
-	    painelHistorico.setVisible(false);
-	    modeloHistorico.setRowCount(0);
-	    txtQuantidade.setText("");
+        try {
+            var registro = pontuacaoClienteService.pontuar(clienteSelecionado[0].getId(),
+                    produtoSelecionado[0].getId(), campanhaSelecionada[0].getId());
+            JOptionPane.showMessageDialog(frameConsulta,
+                    "Pontos registrados com sucesso! Quantidade atual: " + registro.quantidade());
+            atualizarHistorico();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(frameConsulta, "Erro ao pontuar: " + ex.getMessage(), "Erro",
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
-	    btnPontuar.setEnabled(false);
+    private void limparTudo() {
+        clienteSelecionado[0] = null;
+        produtoSelecionado[0] = null;
+        campanhaSelecionada[0] = null;
 
-	    comboCliente.requestFocusInWindow();
-	}
-	
-	
-	private DefaultTableModel criarModeloTabela(String[] colunas) {
-		return new DefaultTableModel(colunas, 0) {
-			private static final long serialVersionUID = 1L;
+        painelBuscaCliente.limpar();
+        painelBuscaProduto.limpar();
+        painelBuscaProduto.habilitar(false);
+        painelBuscaCampanha.limpar();
+        painelBuscaCampanha.habilitar(false);
 
-			@Override
-			public boolean isCellEditable(int row, int column) {
-				return false;
-			}
-		};
-	}
+        painelHistorico.setVisible(false);
+        modeloHistorico.setRowCount(0);
+        txtQuantidade.setText("");
+        btnPontuar.setEnabled(false);
 
-	public void abrirTelaConsulta(JFrame frameConsulta) {
-		this.frameConsulta = frameConsulta;
-		limparTudo();
-		frameConsulta.setTitle("Fidelidade — Pontuação de clientes");
-		frameConsulta.getContentPane().removeAll();
-		frameConsulta.setLayout(new BorderLayout(12, 12));
-		frameConsulta.add(this, BorderLayout.CENTER);
-		frameConsulta.revalidate();
-		frameConsulta.repaint();
-	}
+        painelBuscaCliente.focar();
+    }
+
+    private DefaultTableModel criarModeloTabela(String[] colunas) {
+        return new DefaultTableModel(colunas, 0) {
+            private static final long serialVersionUID = 1L;
+            @Override public boolean isCellEditable(int row, int column) { return false; }
+        };
+    }
+
+    public void abrirTelaConsulta(JFrame frameConsulta) {
+        this.frameConsulta = frameConsulta;
+        limparTudo();
+        frameConsulta.setTitle("Fidelidade — Pontuação de clientes");
+        frameConsulta.getContentPane().removeAll();
+        frameConsulta.setLayout(new BorderLayout(12, 12));
+        frameConsulta.add(this, BorderLayout.CENTER);
+        frameConsulta.revalidate();
+        frameConsulta.repaint();
+    }
 }
